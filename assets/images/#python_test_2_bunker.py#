@@ -1,0 +1,433 @@
+import pygame, sys, time, math, random
+from pygame.locals import *
+
+pygame.init()
+canvasWidth = 1280
+canvasHeight = 700
+win = pygame.display.set_mode((canvasWidth, canvasHeight))
+
+pygame.display.set_caption("hello world")
+
+starList = [pygame.image.load("star_1.png"), pygame.image.load("star_2.png"), pygame.image.load("star_3.png"), pygame.image.load("star_4.png")]
+cloud1 = [pygame.image.load('cloud1.png')]
+
+arial = pygame.font.SysFont('arial.ttf', 40)
+
+hpBag = [pygame.image.load("hp_1_open_chute.png"), pygame.image.load("hp_1_green.png"), pygame.image.load("hp_1_white.png")]
+
+sleigh1 = [
+    [pygame.image.load("sleigh_0_1.png"), pygame.image.load("sleigh_0_2.png")],
+    [pygame.image.load("sleigh_1_1.png"), pygame.image.load("sleigh_1_2.png")], 
+    [pygame.image.load("sleigh_2_1.png"), pygame.image.load("sleigh_2_2.png")],
+    [pygame.image.load("sleigh_3_1.png"), pygame.image.load("sleigh_3_2.png")],
+    [pygame.image.load("sleigh_4_1.png"), pygame.image.load("sleigh_4_2.png")],
+    [pygame.image.load("sleigh_5_1.png"), pygame.image.load("sleigh_5_2.png")]]
+startIMG = [pygame.image.load("start.png")]
+
+bunker_pink = pygame.image.load("bunker_pink.png")
+bunker_red = pygame.image.load("bunker_red.png")
+bunker_hit = [bunker_pink, bunker_red, bunker_pink, bunker_red, bunker_pink]
+bunker_1 = [
+    [pygame.image.load("bunker_0.png"),pygame.image.load("bunker_1.png"),pygame.image.load("bunker_2.png"),pygame.image.load("bunker_3.png")],
+    [bunker_hit[0]]]
+presentEnd = [pygame.image.load("present_1_death_4.png"), pygame.image.load("present_1_death_5.png")]
+present1 = [
+    [pygame.image.load("present_1_open_chute.png"), pygame.image.load("present_1_death_1.png"), pygame.image.load("present_1_death_2.png"), pygame.image.load("present_1_death_3.png"), presentEnd[0], presentEnd[1]],
+    [pygame.image.load("big_present_open_chute.png"), pygame.image.load("big_present_death_1.png"), pygame.image.load("big_present_death_2.png"), pygame.image.load("big_present_death_3.png"), presentEnd[0], presentEnd[1]]]
+background = [pygame.image.load("background.png"), pygame.image.load("background_evil.png")]
+rapidFire = [pygame.image.load("rapidFire.png")]
+noFire = pygame.image.load("no_fire.png")
+fireState = False
+fireSafety = False
+fireTime = 0
+gun = [pygame.image.load("gun.png")]
+gunX = math.floor(canvasWidth / 2)
+gunY = canvasHeight - 175
+gunAng = 0
+gunRect = gun[0].get_rect(center = (gunX,gunY))
+laserDistance = 2000
+laserWidth = 4
+wave = 0
+bunkeranim = 1
+
+
+def vectCoors(a, d, x, y):
+    x -= math.sin(a * math.pi / 180) * d
+    y -= math.cos(a * math.pi / 180) * d
+    return (x, y)
+
+class starClass(object):
+    def __init__(self, x, y, size):
+        self.x = x
+        self.y = y
+        self.width = 32
+        self.height = 32
+        self.anim = 0
+        self.size = size
+        self.nextBlink = tickStart + random.randint(2, 50)
+
+class bunker(object):
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = 148
+        self.height = 80
+        self.hp = 3
+        self.hit = 0
+        self.anim = bunkeranim
+
+class enemy(object):
+    def __init__(self, y, hp):
+        self.y = y
+        self.width = 40 * (hp + 1)
+        self.height = 75
+        self.vel = (random.randint(-2, 2) + 12 * (random.randint(0,1) - .5) * 2) + hp
+        self.rate = 12000
+        self.rand = 0
+        self.lastDrop = 0
+        self.hp = hp
+        self.anim = 0
+        self.x = 0-self.width
+
+class projectile(object):
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.vel = 200
+        self.direction = gunAng
+
+class presentClass(object):
+    def __init__(self, x, y, width, height, da, num):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.vel = 5 + random.randint(-3, 3)
+        self.alive = True
+        self.anim = 0
+        self.hpAnim = 0
+        self.da = da
+        self.num = num
+
+class behind(object):
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.vel = 70
+
+class start(object):
+    def __init__(self):
+        self.x = canvasWidth / 2 - 150
+        self.y = canvasHeight / 2 - 50
+        self.width = 300
+        self.height = 100
+
+class cloud(object):
+    def __init__(self):
+        self.x = 200
+
+def globalDraw():
+    win.blit(background[wave], (back.x, back.y))
+    for star in stars:
+        if len(presents) < 75:
+            if star.nextBlink == ticks and star.anim < 2:
+                star.anim += 1
+            elif star.nextBlink == ticks - 1 and star.anim < 2:
+                star.anim += random.randint(0,1)
+                star.nextBlink += random.randint(70, 150)
+            elif star.anim > 0:
+                star.anim -= 1
+        else:
+            star.anim = 0
+        win.blit(starList[star.anim + star.size], (star.x, star.y))
+    if ticks % waveTotal >= (waveTotal-waveLen)-33 and ticks % waveTotal <= (waveTotal-waveLen)+33 and game and cloud_1.x > -200:
+        cloud_1.x -= 3
+    elif game and (ticks % waveTotal < 33 or ticks % waveTotal > waveTotal-33) and cloud_1.x < 0:
+        cloud_1.x += 3
+    elif ticks % waveTotal >= (waveTotal-waveLen)+33 and ticks % waveTotal <= waveTotal-33:
+        cloud_1.x = -200
+    else:
+        cloud_1.x = 0
+    win.blit(cloud1[0], (canvasWidth + cloud_1.x, 50))
+
+    test = arial.render('test: ' + str(ticks % 800), True, (200, 0, 0))
+    win.blit(test, (canvasWidth - 200, 200))
+    
+    if fireState:
+        pygame.draw.line(win, (random.randint(200,255),0,0), (gunX, gunY), (fireX, fireY), laserWidth)
+    gunRotated = pygame.transform.rotate(gun[0], gunAng)
+    win.blit(gunRotated, gunRotated.get_rect(center = (gunX, gunY)))
+    
+    fireRotated = pygame.transform.rotate(rapidFire[0], gunAng)
+    
+    #if fireState:
+    #    win.blit(fireRotated, fireRotated.get_rect(center = (gunX, gunY)))
+    for sleigh in sleighs:
+        #if ticks % 4 == 0:
+            #sleigh.anim += 1
+        if sleigh.anim == 2:
+            sleigh.anim = 0
+        if sleigh.vel < 0:
+            win.blit(pygame.transform.flip(sleigh1[sleigh.hp][sleigh.anim], True, False), ((sleigh.x + sleigh.hp *40)  - 330, sleigh.y))
+        else:
+            win.blit(sleigh1[sleigh.hp][sleigh.anim], (sleigh.x, sleigh.y))
+    #win.blit(present1[0], (firstPresent.x, firstPresent.y))
+    for present in presents:
+        win.blit(present1[present.num][present.anim],(present.x, present.y))
+    for healPack in healPacks:
+        win.blit(hpBag[healPack.anim], (healPack.x, healPack.y))
+    for bunker in bunkers:
+        if bunker.hit == 0:
+            win.blit(bunker_1[0][bunker.hp], (bunker.x, bunker.y))
+        else:
+            win.blit(bunker_1[1][bunker.anim], (bunker.x, bunker.y))
+    if menu or afterGame:
+        win.blit(startIMG[0], startIMG[0].get_rect(center = (canvasWidth / 2, canvasHeight / 2)))
+    if game:
+        scoring = arial.render('SCORE: ' + str(math.floor((ticks - tickStart)/6) + score), True, (255, 0, 0))
+        win.blit(scoring, (gunX - 125, gunY + 125))
+    pygame.display.update()
+
+bunkers = [bunker(50, 560, 148, 80), bunker(300, 560, 148, 80), bunker(canvasWidth - 450, 560, 148, 80), bunker(canvasWidth - 200, 560, 148, 80)]
+sleighs = []
+#firstPresent = presentClass(50, 50, 64, 64)
+presents = []
+healPacks = []
+back = behind(0, 0, 0, 0)
+spawnStart = 50
+spawn = spawnStart
+tickStart = 2500
+ticks = tickStart
+menu = True
+afterGame = False
+sb = start()
+game = True
+endGameTicks = 0
+score = 0
+hpScore = 100
+totalHP = 12
+starDist = 32
+stars = [starClass(random.randint(0, canvasWidth - 32), random.randint(0, math.floor(canvasHeight * 3/4)), random.randint (0,1))]
+cloud_1 = cloud()
+
+waveTotal = 800
+waveLen = 300
+
+for i in range (0, 25):
+    placed = False
+    while not placed:
+        placed = True
+        x = random.randint(0, canvasWidth - 32)
+        y = random.randint(0, math.floor(canvasHeight * 3/4))
+        for star in stars:
+            if x + starDist > star.x and x < star.x + starDist and y + starDist > star.y and y < star.y + starDist:
+                placed = False
+    stars.append(starClass(x, y, random.randint(0,1)))
+
+while menu:
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == MOUSEBUTTONDOWN:
+            fireState = True
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            if mouse_x > sb.x and mouse_x < sb.x + sb.width and mouse_y > sb.y and mouse_y < sb.y + sb.height:
+                menu = False
+    fireX, fireY = vectCoors(gunAng, laserDistance, gunX, gunY)
+    globalDraw()
+while game:
+    pygame.time.delay(40)
+    ticks += 1
+    fireSafety = False
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == MOUSEBUTTONDOWN:
+            fireState = True
+            fireSafety = True
+            fireTime = ticks
+            
+        
+        if fireTime < ticks:
+            fireState = False
+                
+            
+    keys = pygame.key.get_pressed()
+
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    rel_x, rel_y = mouse_x - gunX, gunY - mouse_y
+    gunAng = (180 / math.pi) * -math.atan2(rel_x, rel_y)
+    
+    if keys[pygame.K_SPACE] and ticks - fireTime > 2:
+        fireState = True
+        fireSafety = True
+        fireTime = ticks
+
+    if ticks % spawn == 0:
+        if ticks < 7000:
+            if wave == 1:
+                sleighs.append(enemy(50 + 100 * random.randint(1,3), math.ceil((ticks - 3000) / 1000) + random.randint(0,1)))
+            sleighs.append(enemy(50 + 100 * random.randint(0,2), math.ceil((ticks - 3000) / 1000) + random.randint(0,1)))
+        else:
+            sleighs.append(enemy(50 + 100 * random.randint(0,2), 5))
+        if ticks % 7 == 0 and spawn > 1:
+            spawn -= 1
+        
+    for sleigh in sleighs:
+        sleigh.x += sleigh.vel
+        sleigh.y += math.sin(ticks / 5) * 2
+        if sleigh.x > canvasWidth:
+            sleigh.x = 0 - (sleigh.width)
+        elif sleigh.x < 0 - sleigh.width:
+            sleigh.x = canvasWidth
+
+        if ticks - sleigh.lastDrop > math.ceil(sleigh.rate / ticks) + sleigh.rand and sleigh.x > 0 and sleigh.x < canvasWidth - sleigh.width:
+            if random.randint(0,math.ceil(5/ticks)) == 0 and wave == 1:
+                num = 1
+            else:
+                num = 0
+            if sleigh.vel > 0:
+                presents.append(presentClass(sleigh.x, sleigh.y + sleigh.height - 25, 32, 32, False, num))
+            else:
+                presents.append(presentClass(sleigh.x + sleigh.width - 32, sleigh.y + sleigh.height - 25, 32, 32, False, num))
+            if ticks % waveTotal > waveTotal - waveLen:
+                sleigh.rand = random.randint(0, math.ceil(100000 / (ticks * 1.75)))
+                wave = 1
+            else:
+                sleigh.rand = random.randint(0, math.ceil(100000 / ticks))
+                wave = 0
+            
+            sleigh.lastDrop = ticks
+        elif sleigh.x < 0 or sleigh.x > canvasWidth - sleigh.width:
+            sleigh.lastDrop = ticks
+
+    if len(sleighs) > 0:
+        sleighlist = []
+        for i in range(0, len(sleighs)):
+            if sleighs[i].hp == 0:
+                sleighlist.append(i - len(sleighlist))
+        for sleigh in sleighlist:
+            sleighs.pop(sleigh)
+            
+    if math.floor((ticks - tickStart)/6) + score > hpScore:
+        hpScore += 100
+        healPacks.append(presentClass(random.randint(0,canvasWidth), -50, 32, 32, True, 0))
+            
+    if len(presents) > 0:
+        presList = []
+        for i in range(0, len(presents)):
+            if not presents[i].alive:
+                if presents[i].anim == 5 or (len(presents) > 50 and not totalHP == 0):
+                    presList.append(i - len(presList))
+                else:
+                    presents[i].anim += 1
+            for bunker in bunkers:
+                if bunker.hit == 1:
+                    if bunker.anim < bunkeranim:
+                        bunker.anim += 1
+                        print("bunker anim = " + str(bunker.anim))
+                else:
+                    bunker.hit == 0
+                    bunker.anim == 0
+                if bunker.hp > 0 and presents[i].x + presents[i].width > bunker.x and presents[i].x < bunker.x + bunker.width and presents[i].y > bunker.y and presents[i].alive:
+                    bunker.hp -= 1
+                    bunker.hit = 1
+                    if presents[i].num == 1 and bunker.hp > 0:
+                        bunker.hp -= 1
+                    presList.append(i - len(presList))
+            presents[i].y += presents[i].vel
+            if presents[i].y > canvasHeight - 95:
+                presList.append(i - len(presList))
+        for gift in presList:
+            presents.pop(gift)
+            
+    if len(healPacks) > 0:
+        hpl = []
+        for i in range(0, len(healPacks)):
+            if not healPacks[i].alive:
+                if healPacks[i].anim == 2:
+                    hpl.append(i - len(hpl))
+                    bunkerList = []
+                    for bunker in bunkers:
+                        if bunker.hp < 3:
+                            bunkerList.append(bunker)
+                    if len(bunkerList) > 0:
+                        bunkerChosen = bunkerList[random.randint(0, len(bunkerList) - 1)]
+                        bunkerChosen.hp += 1
+                    else:
+                        score += 10
+                else:
+                    healPacks[i].anim += 1
+            healPacks[i].y += healPacks[i].vel
+            if healPacks[i].y > canvasHeight - 95:
+                hpl.append(i - len(hpl))
+        for gift in hpl:
+            healPacks.pop(gift)
+            
+    if fireSafety:
+        laserDistance = 2000
+        if (len(presents) > 0 or len(sleighs) > 0) and fireState:
+            for d in range(3, 100):
+                x,y = vectCoors(gunAng, d * 10, gunX, gunY)
+                for sleigh in sleighs:
+                    if x < sleigh.x + sleigh.width and x > sleigh.x and y < sleigh.y + sleigh.height and y > sleigh.y and sleigh.hp > 0:
+                        if d * 10 < laserDistance:
+                            laserDistance = d*10
+                            if sleigh.vel < 0:
+                                sleigh.x += 40
+                            sleigh.hp -=1
+                            score += 2
+                for present in presents:
+                    if x < present.x + present.width and x > present.x and y < present.y + present.height and y > present.y and present.alive:
+                        if d * 10 < laserDistance:
+                            laserDistance = d*10
+                            present.alive = False
+                            score += 1
+                for healPack in healPacks:
+                    if x < healPack.x + healPack.width and x > healPack.x and y < healPack.y + healPack.height and y > healPack.y and healPack.alive:
+                        if d * 10 < laserDistance:
+                            laserDistance = d*10
+                            healPack.alive = False
+
+    fireX, fireY = vectCoors(gunAng, laserDistance, gunX, gunY)
+    totalHP = 0
+    for bunker in bunkers:
+        totalHP += bunker.hp
+    if totalHP == 0 and endGameTicks == 0:
+        for present in presents:
+            present.alive = False
+        endGameTicks = ticks + 10
+    if not endGameTicks == 0:
+        if ticks == endGameTicks:
+            afterGame = True
+            for star in stars:
+                star.nextBlink = tickStart + random.randint(2, 50)
+            while afterGame:
+                for event in pygame.event.get():
+                    if event.type == QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    if event.type == MOUSEBUTTONDOWN:
+                        fireState = True
+                        mouse_x, mouse_y = pygame.mouse.get_pos()
+                        if mouse_x > sb.x and mouse_x < sb.x + sb.width and mouse_y > sb.y and mouse_y < sb.y + sb.height:
+                            afterGame = False
+                            for bunker in bunkers:
+                                bunker.hp = 3
+                                bunker.hit = 0
+                            ticks = tickStart
+                            sleighs = []
+                            presents = []
+                            endGameTicks = 0
+                            spawn = spawnStart
+                            score = 0
+                fireX, fireY = vectCoors(gunAng, laserDistance, gunX, gunY)
+                globalDraw()
+    globalDraw()
+
